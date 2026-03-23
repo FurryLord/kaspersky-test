@@ -1,0 +1,9 @@
+baseURL = 'http://localhost/'
+languageCode = 'ru'
+title = 'Тестовое'
+theme = 'hugo-book'
+
+[params]
+  BookTheme = 'auto'
+  BookToC = true
+  BookSearch = true

@@ -1,0 +1,21 @@
+# Hugo build output
+/public/
+/resources/_gen/
+
+# Hugo lock file
+.hugo_build.lock
+
+# Node.js (lint tools)
+node_modules/
+package-lock.json
+package.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
