@@ -16,7 +16,7 @@
 
 [Содержание раздела]
 
-### 2.3. Командлет Add-Type {#add-type}
+### 2.3. Командлет `Add-Type` {#add-type}
 
 [Содержание раздела]
 
@@ -38,49 +38,50 @@
 
 ## 4. Базовый синтаксис импорта API {#import-syntax}
 
-Для вызова функций из нативных библиотек Windows (kernel32.dll, user32.dll и др.) в PowerShell используется механизм [Platform Invoke](#pinvoke-principle).  
+Для вызова функций из нативных библиотек Windows (`kernel32.dll`, `user32.dll` и других) в PowerShell используется механизм [P/Invoke](#pinvoke-principle).
 Это стандартный способ взаимодействия управляемого кода .NET с неуправляемыми функциями Windows API.  
-Подробнее о принципах и отличиях в разных версиях PowerShell см. [Архитектура взаимодействия](#architecture).
+Подробнее о принципах работы и отличиях в разных версиях PowerShell см. в разделе [Архитектура взаимодействия](#architecture).
 
-Для реализации P/Invoke используется атрибут **DllImport**.
-Он указывает среде выполнения, из какого именно .dll-файла и какую функцию нужно вызвать.  
-Подробное описание параметров атрибута приведено в подразделе [Атрибут DllImport](#dllimport-attribute).
+Для реализации P/Invoke применяется атрибут `DllImport`.
+Он указывает среде выполнения, из какой библиотеки и какую функцию следует вызвать.  
+Описание параметров этого атрибута см. в разделе [Атрибут DllImport](#dllimport-attribute).
 
-Чтобы применить этот атрибут в PowerShell, используется [командлет Add-Type](#add-type).  
-Он компилирует фрагмент C#-кода с [атрибутом DllImport](#dllimport-attribute) и добавляет полученный тип в текущую сессию PowerShell.  
-Типичный шаблон использования показан в подразделе [Шаблон импорта с помощью Add-Type](#add-type-template).
+Командлет `Add-Type` предназначен для использования `DllImport` в PowerShell.
+Он компилирует фрагмент кода на C#, содержащий этот атрибут, и загружает полученный тип в текущую сессию.  
+Типовой сценарий применения см. в разделе [Шаблон импорта с помощью Add-Type](#add-type-template).
 
-### 4.1. Атрибут DllImport {#dllimport-attribute}
+### 4.1. Атрибут `DllImport` {#dllimport-attribute}
 
-Атрибут DllImport — это ключевой элемент [Platform Invoke](#pinvoke-principle), который сообщает среде Common Language Runtime (CLR), какую неуправляемую библиотеку (DLL) загрузить и какую функцию в ней вызвать.
-Этот атрибут применяется к статическому внешнему методу и содержит всю необходимую информацию для [маршаллинга данных](#marshalling).
+Атрибут `DllImport` — ключевой элемент механизма [Platform Invoke](#pinvoke-principle).
+Он указывает среде CLR (Common Language Runtime), какую неуправляемую библиотеку (DLL) загрузить и какую функцию в ней вызвать.
+Атрибут применяется к статическому внешнему методу и содержит всю информацию, необходимую для [маршаллинга данных](#marshalling).
 
 Атрибут имеет следующие параметры:
 
-| Параметр                    | Описание                                                                                                                                                                                                                                                              | Значение по умолчанию      |
-| -----------------------------| -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------------------|
-| **dll-name** (обязательный) | Имя библиотеки                                                                                                                                                                                                                                                        | —                          |
-| **EntryPoint**              | Имя функции, если хотите переименовать импортируемую C#-функцию                                                                                                                                                                                                       | —                          |
-| **CharSet**                 | Кодировка строк. Может принимать значения `CharSet.Auto`, `CharSet.Unicode` и `CharSet.Ansi`                                                                                                                                                                          | `CharSet.Auto`             |
-| **SetLastError**            | `true`, если функция сохраняет информацию об ошибках. См. [Получение кода ошибок](#error-codes)                                                                                                                                                                       | `false`                    |
-| **ExactSpelling**           | `true`, если значение параметра **EntryPoint** должно совпадать с именем функции. `false`, если используются эвристики сопоставления имён                                                                                                                             | `false`                    |
-| **PreserveSig**             | `true`, если нужно сохранить оригинальную сигнатуру функции (возвращаемое значение HRESULT передаётся как `int`). `false`, если среда выполнения должна автоматически преобразовывать неудачные HRESULT в исключения. См. [Обработка исключений](#exception-handling) | `true`                     |
-| **CallingConvention**       | Соглашение о вызовах, определяющее порядок передачи аргументов и очистки стека.                                                                                                                                                                                       | `CallingConvention.Winapi` |
+| Параметр                  | Описание                                                                                                                                                                                                         | Значение по умолчанию      |
+| ---------------------------| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------------------|
+| `dll-name` (обязательный) | Имя DLL-файла, из которого импортируется функция                                                                                                                                                                 | —                          |
+| `EntryPoint`              | Имя функции в библиотеке. Указывается, если имя метода в C# отличается от имени экспортируемой функции                                                                                                           | —                          |
+| `CharSet`                 | Определяет кодировку строковых параметров. Доступные значения: `Auto`, `Unicode`, `Ansi`                                                                                                                         | `CharSet.Auto`             |
+| `SetLastError`            | Указывает, сохраняет ли вызываемая функция код ошибки. При значении `true` код ошибки можно получить через `Marshal.GetLastWin32Error()`. См. [Получение кода ошибок](#error-codes)                              | `false`                    |
+| `ExactSpelling`           | Определяет, должно ли имя из `EntryPoint` точно совпадать с именем функции в библиотеке. При `false` среда выполняет поиск с учётом вариантов написания (например, `MessageBoxA` / `MessageBoxW`)                | `false`                    |
+| `PreserveSig`             | Управляет обработкой `HRESULT`. При `true` возвращаемое значение передаётся как `int`. При `false` неудачные `HRESULT` автоматически преобразуются в исключения. См. [Обработка исключений](#exception-handling) | `true`                     |
+| `CallingConvention`       | Определяет порядок передачи аргументов и очистки стека                                                                                                                                                           | `CallingConvention.Winapi` |
 
-Значения **CallingConvention**:
+Значения `CallingConvention`:
 
-| Значение   | Описание                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| `Winapi`   | Использует соглашение платформы по умолчанию. На Windows эквивалентно `StdCall`                                       |
-| `Cdecl`    | Вызывающий код очищает стек. Применяется для функций с переменным числом аргументов (например, `printf`)              |
-| `StdCall`  | Вызываемая функция очищает стек. Стандартное соглашение для Win32 API                                                 |
-| `ThisCall` | Первый параметр — указатель `this` (через регистр ECX). Используется для вызовов методов классов из неуправляемых DLL |
-| `FastCall` | Аргументы по возможности передаются через регистры. В .NET не поддерживается                                          |
+| Значение   | Описание                                                                                                                                                                                                         |
+| ------------| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Winapi`   | Фактически не определяет конкретное соглашение вызова, а использует соглашение, принятое на платформе по умолчанию                                                                                               |
+| `Cdecl`    | Вызывающий код очищает стек. Это позволяет вызывать функции с переменным числом аргументов (varargs), что делает его подходящим для методов, принимающих переменное количество параметров (например, `printf`)   |
+| `StdCall`  | Вызываемая функция очищает стек                                                                                                                                                                                  |
+| `ThisCall` | Первый параметр — указатель `this`, который передается через регистр `ECX`. Остальные параметры помещаются в стек. Это соглашение используется для вызова методов классов, экспортированных из неуправляемой DLL |
+| `FastCall` | Это соглашение вызова не поддерживается                                                                                                                                                                          |
 
 Пример атрибута c заданными параметрами:
 
 ```csharp
-[DllImport("user32.dll",
+[ ("user32.dll",
     EntryPoint = "MessageBoxW",
     CharSet = CharSet.Unicode,
     SetLastError = true,
@@ -91,13 +92,14 @@
 
 ### 4.2. Шаблон импорта c помощью Add-Type {#add-type-template}
 
-Importing Windows API functions in PowerShell is performed using the `Add-Type` cmdlet, which compiles C# code on the fly and loads the resulting type into the current session.
+In PowerShell, Windows API functions are imported using the `Add-Type` cmdlet.
+This cmdlet compiles C# code at runtime and loads the resulting type into the current session.
 
-As an example, we use the `DllImport` attribute with the parameters described in the [previous subsection](#dllimport-attribute) to import the `MessageBoxW` function.
+The example below demonstrates how to import the `MessageBoxW` function using the `DllImport` attribute with the parameters described in the [previous subsection](#dllimport-attribute).
 
-`MessageBoxW` is a Windows API function that displays a modal dialog box containing a message and buttons, and returns a value indicating which button the user pressed.
+`MessageBoxW` is a Windows API function that displays a modal dialog box with a message and buttons, returning a value that indicates which button the user selected.
 
-Step-by-step Example:
+Step-by-step example:
 
 1. Define the function signature for `MessageBoxW` according to the [Windows API documentation](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messageboxw):
 
@@ -113,7 +115,13 @@ Step-by-step Example:
   '@
   ```
   
-  **Note**: The combination of `public static extern` in P/Invoke ensures that the method is accessible from PowerShell (`public`), can be called without creating an instance of the class (`static`), and `extern` indicates that the method implementation resides outside managed code — in a native DLL, from which the CLR substitutes the actual call code at runtime. Omitting any of these key modifiers makes correct import and invocation of the Windows API function from PowerShell impossible.
+  **Important**: The modifiers `public`, `static`, and `extern` are required for P/Invoke to work correctly in PowerShell:
+  
+- `public` — makes the method accessible from PowerShell;
+- `static` — allows calling the method without instantiating the class;
+- `extern` — indicates that the method implementation resides in a native DLL.
+  
+  Omitting any of these modifiers prevents the Windows API function from being properly imported and invoked.
 
 2. Import the API using `Add-Type`:
 
@@ -129,9 +137,11 @@ Step-by-step Example:
   $result = $type::MessageBox([IntPtr]::Zero, "Hello World!", "Windows API", 0)
   ```
 
-4. Upon successful execution, the following dialog box will appear. Click the "OK" button for the function to return the value corresponding to the pressed button:
+4. If the import was successful, a dialog box appears:
 
   ![Click the "OK" button](./hello_world.png)
+
+  Click **OK**. The function returns a value corresponding to the pressed button.
 
 5. Display the result:
 
@@ -143,51 +153,37 @@ Step-by-step Example:
 
 When importing Windows API functions, the most commonly used `Add-Type` parameters are listed below:
 
-| Parameter                       | Purpose                                                                                | Example Value                      |
-| ------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------- |
-| `-MemberDefinition` (mandatory) | String containing the C# code (including the `[DllImport]` attribute)                 | `$signature` (here-string)         |
-| `-Name` (mandatory)             | Name of the generated type or class                                                    | `"Win32Utils"`, `"NativeMethods"`  |
-| `-Namespace`                    | Namespace to prevent name conflicts with other types                                   | `"Win32"`, `"PInvoke"`, `"Native"` |
-| `-PassThru`                     | Returns the created type as an object (allows immediate assignment to a variable)      | `$type = Add-Type ... -PassThru`   |
-| `-ReferencedAssemblies`         | Additional .NET assemblies required by the code (e.g. for Windows Forms)              | `"System.Windows.Forms"`           |
-| `-IgnoreLastError`              | Disables automatic capturing of `GetLastError()` (not recommended for Win32 API calls) | —                                  |
+| Parameter                      | Purpose                                                                                | Example Value                      |
+| --------------------------------| ----------------------------------------------------------------------------------------| ------------------------------------|
+| `-MemberDefinition` (required) | Contains the C# code with the `[DllImport]` attribute and method signature             | `$signature` (here-string)         |
+| `-Name` (required)             | Specifies the name of the generated type or class                                      | `"Win32Utils"`, `"NativeMethods"`  |
+| `-Namespace`                   | Organizes the type within a namespace to avoid naming conflicts                        | `"Win32"`, `"PInvoke"`, `"Native"` |
+| `-PassThru`                    | Returns the created type object, allowing immediate assignment to a variable           | `$type = Add-Type ... -PassThru`   |
+| `-ReferencedAssemblies`        | Lists additional .NET assemblies required by the code (for example, Windows Forms)     | `"System.Windows.Forms"`           |
+| `-IgnoreLastError`             | Disables automatic capturing of `GetLastError()` — not recommended for Win32 API calls | —                                  |
 
 Examples of their usage are listed below:
 
-#### `-MemberDefinition` paremeter
+#### `MemberDefinition`
 
-The `-MemberDefinition` parameter is the most important one — it accepts the actual C# declaration of the imported function(s). It is usually provided as a here-string for readability.
+This parameter accepts the actual C# declaration of the imported function(s).
+It is typically provided as a here-string for better readability:
 
 ```powershell
 # Define the function signature
 $signature = @'
 [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-public static extern int MessageBoxW(
-    IntPtr hWnd,
-    string lpText,
-    string lpCaption,
-    uint uType
-);
+public static extern int MessageBoxW(IntPtr hWnd, string lpText, string lpCaption, uint uType);
 '@
 
-# Use -MemberDefinition to pass the signature
-$type = Add-Type -MemberDefinition $signature `
-                 -Name "User32Methods" `
-                 -Namespace "Win32" `
-                 -PassThru
+# Pass the signature using -MemberDefinition
+$type = Add-Type -MemberDefinition $signature -Name "User32Methods" -PassThru
 
-# Now we can call the function
-$result = $type::MessageBoxW(
-    [IntPtr]::Zero,
-    "This is a test message",
-    "PowerShell + WinAPI",
-    0x40  # MB_ICONINFORMATION
-)
-
-Write-Host "Dialog result: $result"
+# Call the imported function
+$result = $type::MessageBoxW([IntPtr]::Zero, "Test", "PowerShell", 0)
 ```
 
-#### `-Name` paremeter
+#### `Name`
 
 ....
 
